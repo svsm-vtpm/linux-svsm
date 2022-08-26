@@ -52,6 +52,15 @@ macro_rules! prints {
     }};
 }
 
+#[macro_export]
+macro_rules! println {
+    ($($args:tt),*) => {{
+            use crate::util::serial::serial_out;
+            $crate::prints!($($args),*);
+            serial_out("\n")
+    }};
+}
+
 #[inline]
 #[cfg(feature = "verbose")]
 pub fn serial_out(string: &str) {

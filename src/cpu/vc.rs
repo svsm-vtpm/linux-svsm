@@ -271,9 +271,10 @@ pub extern "x86-interrupt" fn vc_handler(stack_frame: InterruptStackFrame, error
     let rip: u64 = stack_frame.instruction_pointer.as_u64();
 
     prints!(
-        "Unhandled #VC exception: {:#?}\n{:#?}\nRIP={rip}\n",
+        "Unhandled #VC exception: {:#?}\n{:#?}\nRIP={:#x}\n",
         error_code,
-        stack_frame
+        stack_frame,
+        rip
     );
     vc_terminate_unhandled_vc();
 }

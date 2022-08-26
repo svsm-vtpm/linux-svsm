@@ -10,6 +10,7 @@
 #![feature(type_ascription)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(stmt_expr_attributes)]
 // Disable the (implicitly-linked) standard library. #! defines behavior of the current module; as
 // we are in root, the entire crate is affected.
 #![no_std]
@@ -30,6 +31,7 @@ pub mod mem;
 pub mod svsm_request;
 /// Auxiliary functions and macros
 pub mod util;
+pub mod vtpm;
 
 extern crate alloc;
 
@@ -41,6 +43,7 @@ use crate::mem::*;
 use crate::svsm_request::svsm_request_loop;
 use crate::util::*;
 use crate::vmsa::*;
+use crate::vtpm::*;
 
 use core::panic::PanicInfo;
 
@@ -170,6 +173,8 @@ pub extern "C" fn svsm_main() -> ! {
 
     // Load BIOS
     start_bios();
+
+    vtpm_init();
 
     // Start taking requests from guest in this vCPU
     svsm_request_loop();

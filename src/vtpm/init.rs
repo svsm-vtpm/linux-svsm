@@ -11,6 +11,7 @@ use crate::util::locking::SpinLock;
 use crate::*;
 use alloc::vec::Vec;
 use bindings::*;
+use cty::c_void;
 use lazy_static::lazy_static;
 use x86_64::PhysAddr;
 
@@ -20,11 +21,32 @@ use tock_registers::{
     registers::ReadWrite,
 };
 
+static mut IS_POWER_ON: bool = false;
 const TPM_CRB_BASE: u64 = 0xFED4_0000;
 const TPM_CRB_REGION_SIZE: u64 = 0x1000;
 
+unsafe fn rpc_signal_power_on(is_reset: bool) {
+    // if power is on and this is not a call to do TPM reset then return
+    if IS_POWER_ON && !is_reset {
+        return;
+    }
+    // If this is a reset but power is not on, then return
+    if is_reset && !IS_POWER_ON {
+        return;
+    }
+    // Unless this is just a reset, pass power on signal to platform
+    if !is_reset {
+        _plat__Signal_PowerOn();
+    }
+    // Power on and reset both lead to _TPM_Init()
+    _plat__Signal_Reset();
+
+    // Set state as power on
+    IS_POWER_ON = true;
+}
+
 lazy_static! {
-    static ref TPM_CRB_REGS: SpinLock<&'static mut TpmCrbRegisters> = {
+    pub static ref TPM_CRB_REGS: SpinLock<&'static mut TpmCrbRegisters> = {
         let crb_pa = PhysAddr::new(TPM_CRB_BASE);
 
         let crb_va = match pgtable_map_pages_private(crb_pa, TPM_CRB_REGION_SIZE) {
@@ -41,7 +63,7 @@ lazy_static! {
 }
 
 register_structs! {
-    TpmCrbRegisters {
+    pub TpmCrbRegisters {
         (0x0000 => loc_state: ReadWrite<u32, LocState::Register>),
         (0x0004 => _reserved),
         (0x0008 => loc_ctrl: ReadWrite<u32, LocCtrl::Register>),
@@ -202,6 +224,32 @@ pub fn send_tpm_command(request: &mut [u8]) -> TpmResponse {
 
 pub fn vtpm_init() {
     tpm_crb_init();
+    unsafe {
+        _plat__NVEnable(core::ptr::null::<c_void>() as *mut c_void);
+
+        if _plat__NVNeedsManufacture() == 1 {
+            if TPM_Manufacture(1) != 0 {
+                _plat__NVDisable(1);
+                println!("Manufacturing failed");
+            }
+
+            // Coverage test - repeated manufacturing attempt
+            if TPM_Manufacture(0) != 1 {
+                println!("Manufacturing failed 1!");
+            }
+
+            // Coverage test - re-manufacturing
+            TPM_TearDown();
+
+            if TPM_Manufacture(1) != 0 {
+                println!("Manufacturing failed 2!");
+            }
+        }
+
+        _plat__SetNvAvail();
+
+        rpc_signal_power_on(false);
+    }
     let mut cmd1: &mut [u8] = &mut [
         0x80, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x00, 0x00, 0x01, 0x43, 0x00,
     ];

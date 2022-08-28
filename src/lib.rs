@@ -32,6 +32,7 @@ pub mod svsm_request;
 /// Auxiliary functions and macros
 pub mod util;
 pub mod vtpm;
+pub mod wrapper;
 
 extern crate alloc;
 
@@ -44,6 +45,7 @@ use crate::svsm_request::svsm_request_loop;
 use crate::util::*;
 use crate::vmsa::*;
 use crate::vtpm::*;
+use crate::wrapper::*;
 
 use core::panic::PanicInfo;
 
@@ -173,6 +175,8 @@ pub extern "C" fn svsm_main() -> ! {
 
     // Load BIOS
     start_bios();
+
+    wrapper_init();
 
     vtpm_init();
 

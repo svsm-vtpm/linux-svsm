@@ -1108,6 +1108,31 @@ fn root_mem_init(pstart: PhysAddr, vstart: VirtAddr, page_count: usize) {
     }
 }
 
+pub fn sizeof_alloc(ptr: *mut u8) -> usize {
+        // Get the memory size allocated to ptr
+        let ptr_size: usize;
+        let virt_addr: VirtAddr = VirtAddr::new(ptr as u64);
+        let result: Result<SvsmPageInfo, ()> = ROOT_MEM.lock().get_page_info(virt_addr);
+        if let Err(_e) = result {
+            panic!("sizeof_alloc: unknown memory");
+        }
+        let info: SvsmPageInfo = result.unwrap();
+        match info {
+            SvsmPageInfo::Allocated(ai) => {
+                ptr_size = (ai.order as u64 * PAGE_SIZE) as usize;
+            }
+            SvsmPageInfo::SlabPage(si) => {
+                let slab: *mut Slab = si.slab.as_u64() as *mut Slab;
+                ptr_size = unsafe { (*slab).item_size as usize }
+            }
+            _ => {
+                panic!("sizeof_alloc: unsupported page type");
+            }
+        }
+        ptr_size
+    }
+
+
 unsafe fn __mem_init() {
     let mem_begin: PhysFrame = PhysFrame::containing_address(PhysAddr::new(dyn_mem_begin));
     let mem_end: PhysFrame = PhysFrame::containing_address(PhysAddr::new(dyn_mem_end));

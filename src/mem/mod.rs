@@ -24,6 +24,7 @@ pub use crate::mem::alloc::mem_free;
 pub use crate::mem::alloc::mem_free_frame;
 pub use crate::mem::alloc::mem_free_frames;
 pub use crate::mem::alloc::mem_init;
+pub use crate::mem::alloc::sizeof_alloc;
 
 pub use crate::mem::pgtable::pgtable_init;
 pub use crate::mem::pgtable::pgtable_make_pages_np;

@@ -8,6 +8,8 @@
 
 #![allow(non_camel_case_types)]
 
+use crate::bindings::strlen;
+use crate::bindings::Regs;
 use crate::*;
 use alloc::alloc::{alloc, dealloc};
 use core::alloc::Layout;
@@ -15,11 +17,6 @@ use core::slice;
 use core::str;
 
 pub type c_char = u8;
-pub type size_t = usize;
-
-extern "C" {
-    fn strlen(cs: *const c_char) -> size_t;
-}
 
 const ALIGN_32: usize = 32;
 
@@ -81,9 +78,26 @@ pub extern "C" fn free(ptr: *mut u8) {
 #[no_mangle]
 pub extern "C" fn serial_out(s: *const c_char) {
     unsafe {
-        let rust_str = str::from_utf8_unchecked(slice::from_raw_parts(s, strlen(s)));
-        println!("{}", rust_str);
+        let rust_str =
+            str::from_utf8_unchecked(slice::from_raw_parts(s, strlen(s as *const i8) as usize));
+        prints!("{}", rust_str);
     }
+}
+
+impl From<(u32, u32, u32, u32)> for Regs {
+    fn from(t: (u32, u32, u32, u32)) -> Regs {
+        Regs {
+            eax: t.0,
+            ebx: t.1,
+            ecx: t.2,
+            edx: t.3,
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vc_cpuid_ext(leaf: u32, subleaf: u32) -> Regs {
+    vc_cpuid(leaf, subleaf).into()
 }
 
 pub fn wrapper_init() {

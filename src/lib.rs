@@ -19,6 +19,7 @@
 // overwrite _start().
 #![no_main]
 
+pub mod bindings;
 /// Initialize BIOS for the guest
 pub mod bios;
 /// Prepare and start SMP

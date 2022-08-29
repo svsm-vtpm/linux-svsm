@@ -16,8 +16,9 @@ LD_FLAGS	:= -m64
 LD_FLAGS	+= -nostdlib
 LD_FLAGS	+= -Wl,-Tsrc/start/svsm.lds -Wl,--build-id=none
 
+TARGET_JSON	:= x86_64-unknown-none
 TARGET_DIR	:= target
-TARGET		:= $(TARGET_DIR)/svsm-target/debug
+TARGET		:= $(TARGET_DIR)/$(TARGET_JSON)/debug
 
 OBJS		:= src/start/start.o
 OBJS		+= $(TARGET)/liblinux_svsm.a
@@ -34,6 +35,12 @@ LDS_FLAGS	+= -DSVSM_MEM="$(SVSM_MEM)ULL"
 
 .PHONY: all doc prereq clean superclean
 
+STATIC_LIBS	+= ./external/build/lib/libtpm.a
+STATIC_LIBS	+= ./external/build/lib/libplatform.a
+STATIC_LIBS	+= ./external/build/lib/libwolfssl.a
+STATIC_LIBS	+= ./external/build/lib/libcrt.a
+STATIC_LIBS	+= ./external/build/lib/libm.a
+
 all: .prereq svsm.bin
 
 doc: .prereq
@@ -43,7 +50,8 @@ svsm.bin: svsm.bin.elf
 	objcopy -g -O binary $< $@
 
 svsm.bin.elf: $(OBJS) src/start/svsm.lds
-	$(GCC) $(LD_FLAGS) -o $@ $(OBJS)
+	@xargo build --features $(FEATURES)
+	$(GCC) $(LD_FLAGS) -o $@ $(OBJS) -Wl,--start-group $(STATIC_LIBS) -Wl,--end-group
 
 %.a: src/*.rs src/cpu/*.rs src/mem/*.rs src/util/*.rs src/vtpm/*.rs
 	@xargo build --features $(FEATURES)
@@ -70,7 +78,7 @@ prereq: .prereq
 
 clean:
 	@xargo clean 
-	rm -f svsm.bin svsm.bin.elf $(OBJS)
+	rm -f svsm.bin svsm.bin.elf $(OBJS) $(STATIC_LIBS)
 	rm -rf $(TARGET_DIR)
 	rm -f src/start/svsm.lds
 

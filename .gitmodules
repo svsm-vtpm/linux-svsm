@@ -1,0 +1,16 @@
+[submodule "external/libcrt"]
+	path = external/libcrt
+	url = https://github.com/svsm-vtpm/libcrt.git
+	branch = svsm-vtpm-preview
+[submodule "external/libm"]
+	path = external/libm
+	url = https://github.com/svsm-vtpm/libm.git
+	branch = svsm-vtpm-preview
+[submodule "external/wolfssl"]
+	path = external/wolfssl
+	url = https://github.com/svsm-vtpm/wolfssl.git
+	branch = svsm-vtpm-preview
+[submodule "external/ms-tpm-20-ref"]
+	path = external/ms-tpm-20-ref
+	url = https://github.com/svsm-vtpm/ms-tpm-20-ref.git
+	branch = svsm-vtpm-preview

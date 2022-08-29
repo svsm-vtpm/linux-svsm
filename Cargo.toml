@@ -22,6 +22,11 @@ uuid = { version = "1", default-features = false }
 
 # for TPM register space
 tock-registers = "0.8.0"
+# ctypes for bindgen/no_std
+cty = "0.2.2"
+
+[build-dependencies]
+bindgen = "0.60.1"
 
 [dependencies.lazy_static]
 version = "1.0"

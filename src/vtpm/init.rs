@@ -9,6 +9,8 @@
 use crate::println;
 use crate::util::locking::SpinLock;
 use crate::*;
+use alloc::vec::Vec;
+use bindings::*;
 use lazy_static::lazy_static;
 use x86_64::PhysAddr;
 
@@ -169,6 +171,43 @@ fn tpm_crb_init() {
     println!("TPM CRB registers initialized!");
 }
 
+pub struct TpmResponse {
+    pub data: Vec<u8>,
+}
+
+pub fn send_tpm_command(request: &mut [u8]) -> TpmResponse {
+    let default_vec_size: usize = 4096;
+
+    let mut __resp_sz: u32 = default_vec_size.try_into().unwrap();
+    let mut _resp_sz: *mut u32 = &mut __resp_sz;
+
+    let mut __resp_vec: Vec<u8> = Vec::with_capacity(default_vec_size);
+    let mut _resp_vec: *mut u8 = __resp_vec.as_mut_ptr();
+    unsafe {
+        let resp_vec: *mut *mut u8 = &mut _resp_vec as *mut *mut u8;
+
+        ExecuteCommand(
+            request.len() as u32,
+            request.as_mut_ptr(),
+            _resp_sz,
+            resp_vec,
+        );
+        __resp_vec.set_len(__resp_sz as usize);
+    }
+    let tpm_resp: TpmResponse = TpmResponse {
+        data: __resp_vec,
+    };
+    tpm_resp
+}
+
 pub fn vtpm_init() {
     tpm_crb_init();
+    let mut cmd1: &mut [u8] = &mut [
+        0x80, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x00, 0x00, 0x01, 0x43, 0x00,
+    ];
+    let mut cmd2: &mut [u8] = &mut [
+        0x80, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x01, 0x44, 0x00, 0x00,
+    ];
+    send_tpm_command(&mut cmd1);
+    send_tpm_command(&mut cmd2);
 }

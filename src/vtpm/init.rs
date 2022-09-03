@@ -258,4 +258,6 @@ pub fn vtpm_init() {
     ];
     send_tpm_command(&mut cmd1);
     send_tpm_command(&mut cmd2);
+    let keytype: KeyType = KeyType::Rsa2048;
+    manufacture::tpm2_create_ek(keytype);
 }

@@ -112,6 +112,38 @@ impl tpm2_authblock {
     }
 }
 
+impl tpm2_evictcontrol_req {
+    fn new(
+        hdr: tpm_req_header,
+        auth: u32,
+        obj_handle: u32,
+        authblk_len: u32,
+        authblock: tpm2_authblock,
+        persistent_handle: u32,
+    ) -> Self {
+        tpm2_evictcontrol_req {
+            hdr: hdr,
+            auth: auth,
+            objectHandle: obj_handle,
+            authblockLen: authblk_len,
+            authblock: authblock,
+            persistentHandle: persistent_handle,
+        }
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        unsafe {
+            slice::from_raw_parts_mut(
+                self as *mut tpm2_evictcontrol_req as *mut u8,
+                core::mem::size_of::<tpm2_evictcontrol_req>(),
+            )
+        }
+    }
+    fn size() -> u32 {
+        core::mem::size_of::<Self>() as u32
+    }
+}
+
 pub enum KeyType {
     Ecc,
     Rsa2048,
@@ -123,6 +155,7 @@ pub fn tpm2_create_ek(key_type: KeyType) {
     let symkeylen: u16 = 128;
     let authpolicy_len: u16 = 32;
     let rsa_keysize: u16 = 2048;
+    let tpm2_ek_handle: u32 = TPM2_EK_RSA_HANDLE;
     let authpolicy: [u8; 32] = [
         0x83, 0x71, 0x97, 0x67, 0x44, 0x84, 0xb3, 0xf8, 0x1a, 0x90, 0xcc, 0x8d, 0x46, 0xa5, 0xd7,
         0x24, 0xfd, 0x52, 0xd7, 0x6e, 0x06, 0x52, 0x0b, 0x64, 0xf2, 0xa1, 0xda, 0x1b, 0x33, 0x14,
@@ -174,5 +207,34 @@ pub fn tpm2_create_ek(key_type: KeyType) {
     let (left_hdr, _) = create_primary_req.split_at_mut(core::mem::size_of::<tpm_req_header>());
     hdr.set_size(final_req_len);
     left_hdr.copy_from_slice(hdr.as_slice());
-    send_tpm_command(create_primary_req.as_mut_slice());
+    let create_primary_resp = send_tpm_command(create_primary_req.as_mut_slice());
+
+    let handle_data: &[u8] = &create_primary_resp.data[10..14];
+    let curr_handle = u32::from_be_bytes([
+        handle_data[0],
+        handle_data[1],
+        handle_data[2],
+        handle_data[3],
+    ]);
+
+    tpm2_evictcontrol(curr_handle, tpm2_ek_handle);
+}
+
+fn tpm2_evictcontrol(curr_handle: u32, perm_handle: u32) {
+    let mut hdr: tpm_req_header = tpm_req_header::new(
+        TPM2_ST_SESSIONS,
+        tpm2_evictcontrol_req::size(),
+        TPM2_CC_EVICTCONTROL,
+    );
+    let authblock: tpm2_authblock = tpm2_authblock::new(TPM2_RS_PW, 0, 0, 0);
+    let mut req: tpm2_evictcontrol_req = tpm2_evictcontrol_req::new(
+        hdr,
+        TPM2_RH_OWNER.to_be(),
+        curr_handle.to_be(),
+        tpm2_authblock::size().to_be(),
+        authblock,
+        perm_handle.to_be(),
+    );
+
+    send_tpm_command(req.as_mut_slice());
 }

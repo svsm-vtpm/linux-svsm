@@ -581,7 +581,7 @@ pub fn vc_cpuid(leaf: u32, subleaf: u32) -> (u32, u32, u32, u32) {
 
     match leaf {
         0x00000001 => {
-            let (_, b, _, _) = vc_cpuid_vmgexit(leaf, subleaf);
+            let (_, b, c, _) = vc_cpuid_vmgexit(leaf, subleaf);
 
             // Use hypervisor supplied APIC ID
             ebx &= 0x00ffffff;
@@ -593,13 +593,23 @@ pub fn vc_cpuid(leaf: u32, subleaf: u32) -> (u32, u32, u32, u32) {
             } else {
                 ecx &= !BIT!(27);
             }
+            // Check for RDRAND bit and set ecx
+            if (c & BIT!(30)) == 1 {
+                ecx |= BIT!(30);
+            }
         }
         0x00000007 => {
+            let (_, b, _, _) = vc_cpuid_vmgexit(leaf, subleaf);
+
             // Set CPUID_ECX[OSPKE] to CR4[PKE]
             if Cr4::read().contains(Cr4Flags::PROTECTION_KEY_USER) {
                 ecx |= BIT!(4);
             } else {
                 ecx &= !BIT!(4);
+            }
+            // Check for RDSEED bit and set ebx
+            if (b & BIT!(18)) == 1 {
+                ebx |= BIT!(18);
             }
         }
         0x0000000b => {

@@ -12,11 +12,12 @@ use crate::*;
 use alloc::vec::Vec;
 use bindings::*;
 use cty::c_void;
+use core::slice;
 use lazy_static::lazy_static;
 use x86_64::PhysAddr;
 
 use tock_registers::{
-    interfaces::{ReadWriteable, Writeable},
+    interfaces::{ReadWriteable, Readable, Writeable},
     register_bitfields, register_structs,
     registers::ReadWrite,
 };
@@ -57,10 +58,17 @@ lazy_static! {
         pgtable_make_pages_shared(crb_va, TPM_CRB_REGION_SIZE);
 
         let crb_regs = unsafe { &mut *crb_va.as_mut_ptr() as &mut TpmCrbRegisters };
+        let crb_regs_ptr = crb_regs as *const _ as *const u8;
+        println!("crb regs mapped at {:#x?}", crb_regs_ptr);
 
         SpinLock::new(crb_regs)
     };
 }
+
+pub const CRB_LOC_CTRL: u32 = 0x08;
+pub const CRB_CTRL_REQ: u32 = 0x40;
+pub const CRB_CTRL_CANCEL: u32 = 0x48;
+pub const CRB_CTRL_START: u32 = 0x4c;
 
 register_structs! {
     pub TpmCrbRegisters {
@@ -84,8 +92,10 @@ register_structs! {
         (0x0064 => ctrl_rsp_size: ReadWrite<u32>),
         (0x0068 => ctrl_rsp_addr: ReadWrite<u64>),
         (0x0070 => _reserved2),
-        (0x0080 => cmd_buffer: [ReadWrite<u32>; 512]),
-        (0x0880 => @END),
+        (0x0080 => @END),
+
+        //(0x0080 => cmd_buffer: [ReadWrite<u32>; 512]),
+        //(0x0880 => @END),
     }
 }
 
@@ -94,7 +104,7 @@ register_bitfields! {
     LocState [
         TpmRegValidSts          OFFSET(7) NUMBITS(1) [],
         ActiveLocality          OFFSET(2) NUMBITS(3) [],
-        LocAssinged             OFFSET(1) NUMBITS(1) [],
+        LocAssigned             OFFSET(1) NUMBITS(1) [],
         TpmEstablished          OFFSET(0) NUMBITS(1) [],
     ],
 
@@ -146,7 +156,7 @@ register_bitfields! {
     IntfId2 [
         DID                     OFFSET(16) NUMBITS(16) [],
         VID                     OFFSET(0)  NUMBITS(16) [
-            VENDOR_SVSM = 0xABCD,
+            VENDOR_SVSM = 0x1014,
         ],
     ],
 
@@ -166,6 +176,11 @@ fn tpm_crb_init() {
 
     #[rustfmt::skip]
     {
+        unsafe {
+            let crb_region = TPM_CRB_BASE as *mut u8;
+
+            core::ptr::write_bytes(crb_region, 0x00, TPM_CRB_REGION_SIZE as usize);
+        }
         let crb_regs = TPM_CRB_REGS.lock();
 
         crb_regs.loc_state.write(LocState::TpmRegValidSts.val(1));
@@ -261,4 +276,75 @@ pub fn vtpm_init() {
     let keytype: KeyType = KeyType::Rsa2048;
     manufacture::tpm2_create_ek(keytype);
     manufacture::tpm2_get_ek_pub();
+}
+
+pub fn handle_tpm2_crb_request(addr: u32, val: u64) {
+    let crb_regs = TPM_CRB_REGS.lock();
+    let locty: u8 = (addr >> 12) as u8;
+    match addr {
+        CRB_CTRL_REQ => {
+            if val == BIT!(0) {
+                crb_regs.ctrl_sts.modify(CtrlSts::tpmIdle.val(0));
+                crb_regs.ctrl_req.modify(CtrlReq::cmdReady.val(0));
+            } else if val == BIT!(1) {
+                crb_regs.ctrl_sts.modify(CtrlSts::tpmIdle.val(1));
+                crb_regs.ctrl_req.modify(CtrlReq::goIdle.val(0));
+            }
+        }
+        CRB_CTRL_CANCEL => {
+            if val == BIT!(0) {
+                println!("Trying to cancel the command");
+            }
+        }
+        CRB_CTRL_START => {
+            let active_locality = tpm_get_active_locality(&crb_regs);
+            if (val == BIT!(0)) && (active_locality == locty as u32) {
+                let cmd_buffer = crb_get_cmd_buffer();
+                let cmd_size: u32 = tpm_cmd_get_size(cmd_buffer);
+                println!("cmd_size {}", cmd_size);
+                let (tpm_cmd, _) = cmd_buffer.split_at_mut(cmd_size as usize);
+                let tpm_resp_inner = send_tpm_command(tpm_cmd);
+                let (tpm_resp, _) = cmd_buffer.split_at_mut(tpm_resp_inner.data.len());
+                tpm_resp.copy_from_slice(tpm_resp_inner.data.as_slice());
+                crb_regs.ctrl_start.set(0);
+            }
+        }
+        CRB_LOC_CTRL => {
+            if val == BIT!(1) {
+                crb_regs.loc_state.modify(LocState::LocAssigned.val(0));
+                crb_regs.loc_sts.modify(LocSts::Granted.val(0));
+            } else if val == BIT!(0) {
+                println!("req access");
+                crb_regs.loc_sts.modify(LocSts::Granted.val(1));
+                crb_regs.loc_sts.modify(LocSts::BeenSeized.val(0));
+                crb_regs.loc_state.modify(LocState::LocAssigned.val(1));
+                let sts = (TPM_CRB_BASE + 0xc) as *const u64;
+                let loc_sts = crb_regs.loc_sts.get();
+                let sts_val = unsafe { *sts };
+                println!("sts {} read_back val {}", sts_val, loc_sts);
+            }
+        }
+        _ => {
+            println!("Ignoring write to an unknown offset {}, val {}", addr, val);
+        }
+    }
+}
+
+fn tpm_get_active_locality(crb_regs: &TpmCrbRegisters) -> u32 {
+    match crb_regs.loc_state.read(LocState::LocAssigned) == 1 {
+        false => 0xff,
+        true => crb_regs.loc_state.read(LocState::ActiveLocality),
+    }
+}
+
+fn tpm_cmd_get_size(cmd: &[u8]) -> u32 {
+    u32::from_be_bytes([cmd[2], cmd[3], cmd[4], cmd[5]])
+}
+
+fn crb_get_cmd_buffer() -> &'static mut [u8] {
+    let cmd_buffer = TPM_CRB_BASE + 0x80;
+
+    unsafe {
+        slice::from_raw_parts_mut(cmd_buffer as *mut u8, (TPM_CRB_REGION_SIZE - 0x80) as usize)
+    }
 }

@@ -19,6 +19,7 @@ use crate::mem::ca::Ca;
 use crate::mem::pgtable_map_pages_private;
 use crate::mem::pgtable_va_to_pa;
 use crate::svsm_begin;
+use crate::vtpm::init::handle_tpm2_crb_request;
 use crate::*;
 
 use alloc::vec::Vec;
@@ -46,6 +47,7 @@ const SVSM_CORE_DELETE_VCPU: u32 = 3;
 const SVSM_CORE_QUERY_PROTOCOL: u32 = 6;
 /// 7
 const SVSM_CORE_CONFIGURE_VTOM: u32 = 7;
+const SVSM_VTPM_REQUEST: u32 = 8;
 
 /// 0
 const SVSM_SUCCESS: u64 = 0;
@@ -253,6 +255,16 @@ unsafe fn handle_configure_vtom_request(vmsa: *mut Vmsa) {
     } else {
         configure_vtom(vmsa);
     }
+}
+
+unsafe fn handle_vtpm_request(vmsa: *mut Vmsa) {
+    let addr: u32 = (*vmsa).r8() as u32;
+    let val: u64 = (*vmsa).r9();
+
+    handle_tpm2_crb_request(addr, val);
+
+    (*vmsa).set_rax(SVSM_SUCCESS);
+    (*vmsa).set_rcx(0);
 }
 
 unsafe fn grant_vmpl_access(va: VirtAddr, page_size: u32, vmpl: u8) -> u32 {
@@ -646,6 +658,7 @@ pub fn svsm_request_loop() {
                     SVSM_CORE_CREATE_VCPU => handle_create_vcpu_request(vmsa),
                     SVSM_CORE_DELETE_VCPU => handle_delete_vcpu_request(vmsa),
                     SVSM_CORE_CONFIGURE_VTOM => handle_configure_vtom_request(vmsa),
+                    SVSM_VTPM_REQUEST => handle_vtpm_request(vmsa),
 
                     _ => (*vmsa).set_rax(SVSM_ERR_UNSUPPORTED_CALLID),
                 }

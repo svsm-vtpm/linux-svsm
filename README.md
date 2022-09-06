@@ -38,6 +38,9 @@ Generate and read source code documentation with:
 
 which will also install necessary prerequisites.
 
+This Linux SVSM also implements a virtual Trusted Platform Module (vTPM).
+Further information can be found in the [README-vtpm.md](README-vtpm.md) file.
+
 ## Preparing the host <a name="host"></a>
 
 Linux SVSM assumes a host with support for AMD's SEV-SNP, as well as

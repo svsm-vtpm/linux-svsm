@@ -195,7 +195,7 @@ SVSM binary. Once the SVSM guest is up, you can check it is running on
 VMPL1 (lower privilege level) with:
 
 ```
-[host@snp-host ~]#  ./launch-qemu.sh -hda guest.qcow2 -sev-snp -svsm svsm.bin
+[host@snp-host ~]#  ./launch-qemu.sh -hda guest.qcow2 -sev-snp -svsm svsm.bin -svsmcrb
 [guest@snp-guest ~]# dmesg | grep VMPL
 [    1.264552] SEV: SNP running at VMPL1.
 ```

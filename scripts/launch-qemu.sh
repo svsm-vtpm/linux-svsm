@@ -58,6 +58,7 @@ usage() {
 	echo " -allow-debug  allow debugging the VM"
 	echo " -bridge       use the specified bridge device for networking"
 	echo " -novirtio     do not use virtio devices"
+	echo " -svsmcrb      SVSM CRB for vTPM communication"
 	exit 1
 }
 
@@ -231,6 +232,8 @@ while [ -n "$1" ]; do
 				;;
 		-novirtio)      USE_VIRTIO=""
 				;;
+		-svsmcrb)       SVSM_CRB="1"
+			        ;;
 		*) 		usage;;
 	esac
 	shift
@@ -386,8 +389,12 @@ fi
 # start vnc server
 [ -n "${VNC_PORT}" ] && add_opts "-vnc :${VNC_PORT}" && echo "Starting VNC on port ${VNC_PORT}"
 
-# start monitor on pty and named socket 'monitor'
-add_opts "-monitor pty -monitor unix:monitor,server,nowait"
+if [ -n "$SVSM_CRB" ]; then
+	add_opts "-device tpm-crb-svsm"
+else
+	# start monitor on pty and named socket 'monitor'
+	add_opts "-monitor pty -monitor unix:monitor,server,nowait"
+fi
 
 if [ -n "$BRIDGE" ]; then
 	setup_bridge_network

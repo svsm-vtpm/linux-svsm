@@ -68,6 +68,13 @@ $ cd scripts/
 $ ./build.sh --package
 ```
 
+If the VTPM flag is disabled, the guest kernel and QEMU built can be used to
+test a svsm.bin that does not support vTPM. For example:
+
+```
+$ VTPM=0 ./build.sh --package
+```
+
 If build fails, read subsection [Build troubleshooting](#trouble-build). On
 successful build, the binaries will be available in `snp-release-<DATE>`.
 

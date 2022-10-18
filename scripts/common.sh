@@ -74,6 +74,12 @@ build_kernel()
 				run_cmd ./scripts/config --disable SYSTEM_REVOCATION_KEYS
 				run_cmd ./scripts/config --module  SEV_GUEST
 				run_cmd ./scripts/config --disable IOMMU_DEFAULT_PASSTHROUGH
+				if [ "$VTPM" == "1" ]; then
+					run_cmd ./scripts/config --enable  CRYPTO_DEV_SP_PSP
+					run_cmd ./scripts/config --enable  CRYPTO_DEV_CCP
+					run_cmd ./scripts/config --disable HW_RANDOM_VIRTIO
+					run_cmd ./scripts/config --disable CRYPTO_DEV_VIRTIO
+				fi
 			popd >/dev/null
 
 			yes "" | $MAKE olddefconfig
@@ -130,11 +136,19 @@ build_install_qemu()
 {
 	DEST="$1"
 
-	[ -d qemu ] || run_cmd git clone --single-branch -b ${QEMU_BRANCH} ${QEMU_GIT_URL} qemu
+	if [ ! -d qemu ]; then
+		run_cmd git clone --single-branch -b ${QEMU_BRANCH} ${QEMU_GIT_URL} qemu
+		pushd qemu > /dev/null
+			run_cmd git remote add current ${QEMU_GIT_URL}
+		popd > /dev/null
+	fi
 
 	MAKE="make -j $(getconf _NPROCESSORS_ONLN) LOCALVERSION="
 
 	pushd qemu >/dev/null
+		run_cmd git remote set-url current ${QEMU_GIT_URL}
+		run_cmd git fetch current
+		run_cmd git checkout current/${QEMU_BRANCH}
 		run_cmd ./configure --target-list=x86_64-softmmu --prefix=$DEST --disable-werror
 		run_cmd $MAKE
 		run_cmd $MAKE install

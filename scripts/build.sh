@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 #!/bin/bash
 
+VTPM="${VTPM:-1}"
 SCRIPT_DIR="$(dirname $0)"
 . ${SCRIPT_DIR}/common.sh
 . ${SCRIPT_DIR}/stable-commits

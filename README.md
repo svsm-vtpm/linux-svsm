@@ -143,6 +143,14 @@ can be found in your PATH. You can edit your ~/.bashrc with:
 export PATH="/(YOUR PATH)/rustlib/x86_64-unknown-linux-gnu/bin/:$PATH"
 ```
 
+The vTPM code has additional dependencies in the form of submodules. Before building,
+make sure you update the submodules:
+
+```
+# git submodule init
+# git submodule update --recursive
+```
+
 To build:
 
 ```
@@ -207,6 +215,55 @@ The -ssh-forward allow you to ssh to the guest from the host. For example, the
 default port is 5555:
 ```
 $ ssh -p 5555 <user>@localhost
+```
+Once the SVSM guest is up, you can also check it has a tpm device with
+an EK pub (ALG_SHA256); your EK pub will likely be different though
+since the SVSM generates a new one on every guest boot:
+
+```
+[guest@snp-vtpm-guest:~]$ sudo apt install tpm2-tools
+[guest@snp-vtpm-guest:~]$ sudo tpm2_getcap handles-persistent
+- 0x81010001
+[guest@snp-vtpm-guest:~]$ sudo tpm2_readpublic -c 0x81010001 -o ek_pub_rsa -f pem
+name: 000bdf34d36f79a14d1a3ef79fb266e20575ace4b44dcc73042020086d8963f973f3
+qualified name: 000b3a5f427dfa526dab73754790f88487769a626472394c9e3c422ca1efa38bf63e
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: fixedtpm|fixedparent|sensitivedataorigin|adminwithpolicy|restricted|decrypt
+  raw: 0x300b2
+type:
+  value: rsa
+  raw: 0x1
+exponent: 65537
+bits: 2048
+scheme:
+  value: null
+  raw: 0x10
+scheme-halg:
+  value: (null)
+  raw: 0x0
+sym-alg:
+  value: aes
+  raw: 0x6
+sym-mode:
+  value: cfb
+  raw: 0x43
+sym-keybits: 128
+rsa: e731aa6151be2c57b2313da03e7ffcb723c83ac689d273edd47acca079d45bc221c9b9a3a3313d96f65ea47d1f344a5897d4227fe89ac46820a69a4db0ad4b756d11481aad20b9b9a7aad75e5b3ec3d56632786e3cdab563fa2a245cb143eb46a3dc018518c397b93f27c047df6c188d4ccb2512e16951d121834539ffc9968e8d2eef54e1e436ce4a06b3aaf3670d1eac318d4b72722a4719d3ab241a8d4829f83feb19961aa892f5ac0c46101c6848348ae577db48e53fb4df3132a7e1c5a19fd8119b3c39baa1d93af69e9c9a0146e7275eb8f230328817c759f5ab8b7a0e1d6430048b0c34e7aef62d7f42f34b41780bc094660af97a6578fc0a5453970d
+authorization policy: 837197674484b3f81a90cc8d46a5d724fd52d76e06520b64f2a1da1b331469aa
+[guest@snp-vtpm-guest:~]$ sudo cat ek_pub_rsa
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5zGqYVG+LFeyMT2gPn/8
+tyPIOsaJ0nPt1HrMoHnUW8IhybmjozE9lvZepH0fNEpYl9Qif+iaxGggpppNsK1L
+dW0RSBqtILm5p6rXXls+w9VmMnhuPNq1Y/oqJFyxQ+tGo9wBhRjDl7k/J8BH32wY
+jUzLJRLhaVHRIYNFOf/Jlo6NLu9U4eQ2zkoGs6rzZw0erDGNS3JyKkcZ06skGo1I
+Kfg/6xmWGqiS9awMRhAcaEg0iuV320jlP7TfMTKn4cWhn9gRmzw5uqHZOvaenJoB
+RucnXrjyMDKIF8dZ9auLeg4dZDAEiww05672LX9C80tBeAvAlGYK+XplePwKVFOX
+DQIDAQAB
+-----END PUBLIC KEY-----
+[guest@snp-vtpm-guest:~$]
 ```
 
 By default, SVSM lives at 512 GB (SVSM\_GPA), and has 256 MB of memory

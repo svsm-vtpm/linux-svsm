@@ -195,9 +195,15 @@ SVSM binary. Once the SVSM guest is up, you can check it is running on
 VMPL1 (lower privilege level) with:
 
 ```
-[host@snp-host ~]#  ./launch-qemu.sh -hda guest.qcow2 -sev-snp -svsm svsm.bin -svsmcrb
+[host@snp-host ~]#  ./launch-qemu.sh -hda guest.qcow2 -sev-snp -svsm svsm.bin -svsmcrb -ssh-forward
 [guest@snp-guest ~]# dmesg | grep VMPL
 [    1.264552] SEV: SNP running at VMPL1.
+```
+
+The -ssh-forward allow you to ssh to the guest from the host. For example, the
+default port is 5555:
+```
+$ ssh -p 5555 <user>@localhost
 ```
 
 By default, SVSM lives at 512 GB (SVSM\_GPA), and has 256 MB of memory

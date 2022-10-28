@@ -26,6 +26,8 @@ USE_VIRTIO="1"
 BRIDGE=""
 SEV_POLICY=""
 SNP_FLAGS="0"
+SSH_FORWARD=""
+SSH_FORWARD_PORT=${SSH_FORWARD_PORT:-"5555"}
 
 QEMU_INSTALL_DIR="./usr/local/bin/"
 
@@ -59,6 +61,7 @@ usage() {
 	echo " -bridge       use the specified bridge device for networking"
 	echo " -novirtio     do not use virtio devices"
 	echo " -svsmcrb      SVSM CRB for vTPM communication"
+	echo " -ssh-forward  Forward the guest port 22 to SSH_FORWARD_PORT in the host"
 	exit 1
 }
 
@@ -234,6 +237,8 @@ while [ -n "$1" ]; do
 				;;
 		-svsmcrb)       SVSM_CRB="1"
 			        ;;
+		-ssh-forward)   SSH_FORWARD="1"
+			        ;;
 		*) 		usage;;
 	esac
 	shift
@@ -399,7 +404,11 @@ fi
 if [ -n "$BRIDGE" ]; then
 	setup_bridge_network
 else
-	add_opts "-netdev user,id=vmnic -device e1000,netdev=vmnic,romfile="
+	if [ -n "$SSH_FORWARD" ]; then
+		add_opts "-netdev user,id=vmnic,hostfwd=tcp::${SSH_FORWARD_PORT}-:22 -device e1000,netdev=vmnic,romfile="
+	else
+		add_opts "-netdev user,id=vmnic -device e1000,netdev=vmnic,romfile="
+	fi
 fi
 
 # log the console  output in stdout.log

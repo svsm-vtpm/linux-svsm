@@ -28,9 +28,9 @@ struct PageStorageType(u64);
 pub const REAL_MAX_ORDER: usize = 52;
 
 // Maximum allocation size is (2^MAX_ORDER)*PAGE_SIZE
-// Currently 128 KiB
-/// 6
-pub const MAX_ORDER: usize = 6;
+// Currently 2MiB
+/// 10
+pub const MAX_ORDER: usize = 10;
 
 impl PageStorageType {
     pub const fn new(t: u64) -> Self {

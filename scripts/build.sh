@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: MIT
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 
 VTPM="${VTPM:-1}"
 SCRIPT_DIR="$(dirname $0)"

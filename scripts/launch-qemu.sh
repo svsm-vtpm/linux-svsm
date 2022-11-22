@@ -10,7 +10,9 @@ CPU="EPYC-v4"
 CPU_FEATURES=""
 MEM="4G"
 MAX_MEM=""
-SMP_NCPUS="4"
+# FIXME: The vtpm code is crashing when the guest has multiple threads.
+# As a workaround we run the guest with 1 thread by default.
+SMP_NCPUS="1"
 MAX_NCPUS=""
 SEV_GUEST=""
 SEV_ES_GUEST=""

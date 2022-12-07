@@ -605,7 +605,7 @@ fn allocate_slab_page(slab: VirtAddr) -> Result<VirtAddr, ()> {
     ROOT_MEM.lock().allocate_slab_page(slab)
 }
 
-fn free_page(vaddr: VirtAddr) {
+pub fn free_page(vaddr: VirtAddr) {
     ROOT_MEM.lock().free_page(vaddr)
 }
 

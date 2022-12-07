@@ -88,7 +88,7 @@ struct SnpSection {
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
-struct SnpSecrets {
+pub struct SnpSecrets {
     version: u32,
     flags: u32,
     fms: u32,
@@ -96,7 +96,7 @@ struct SnpSecrets {
 
     gosvw: [u8; 16],
 
-    vmpck0: [u8; 32],
+    pub vmpck0: [u8; 32],
     vmpck1: [u8; 32],
     vmpck2: [u8; 32],
     vmpck3: [u8; 32],

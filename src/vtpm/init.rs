@@ -20,6 +20,7 @@ use super::manufacture::{
     tpm2_create_ek_rsa2048,
     tpm2_get_ek_pub,
 };
+use super::report::get_and_save_report;
 
 use tock_registers::{
     interfaces::{ReadWriteable, Readable, Writeable},
@@ -270,6 +271,8 @@ pub fn vtpm_init() {
 
         rpc_signal_power_on(false);
     }
+    // cmd1: TPM2_CC_SelfTest
+    // cmd2: TPM2_CC_Startup
     let mut cmd1: &mut [u8] = &mut [
         0x80, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x00, 0x00, 0x01, 0x43, 0x00,
     ];
@@ -301,6 +304,7 @@ pub fn vtpm_init() {
             return;
         }
     }
+    get_and_save_report(&ek_pub_digest)
 }
 
 pub fn handle_tpm2_crb_request(addr: u32, val: u64) {

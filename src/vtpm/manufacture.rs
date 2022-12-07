@@ -1,8 +1,11 @@
 #![allow(unused)]
 
 use crate::bindings::*;
-use crate::init::send_tpm_command;
 use crate::*;
+use crate::init::{
+    send_tpm_command,
+    TpmResponse,
+};
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 use core::slice;
@@ -262,4 +265,86 @@ pub fn tpm2_get_ek_pub() -> Vec<u8> {
     let out_public: &[u8] = &out_parms[..{size as usize + U16_SIZE}];
     //prints!("out_public {:x} {:02x?}\n", {out_public.len()}, out_public);
     out_public.to_vec()
+}
+
+pub fn tpm2_write_report_nvram(report: &[u8]) {
+    if report.len() > usize::from(u16::MAX) {
+        prints!("ERROR: Attestation report size = {:#x} too big\n", {report.len()});
+        return;
+    }
+    let nvindex_attrs: u32 = TPMA_NV_PLATFORMCREATE
+        | TPMA_NV_AUTHREAD
+        | TPMA_NV_OWNERREAD
+        | TPMA_NV_PPREAD
+        | TPMA_NV_PPWRITE
+        | TPMA_NV_NO_DA
+        | TPMA_NV_WRITEDEFINE;
+    let nvindex = TPM2_NV_INDEX_RSA2048_EKCERT;
+    tpm2_nvdefine_space(nvindex, nvindex_attrs, report.len());
+    //
+    // The report size might be bigger than the MAX_NV_BUFFER_SIZE (max buffer size for TPM
+    // NV commands) defined in the TPM spec. For simplicity let's just assume it is at least 1024.
+    //
+    let mut start: u16 = 0;
+    let mut end: u16 = 0;
+    loop {
+        end = start + 1024;
+        if  usize::from(end) > report.len() {
+            end = report.len().try_into().unwrap();
+        }
+        if start >= end {
+            break;
+        }
+        tpm2_nv_write(nvindex, start, &report[usize::from(start)..usize::from(end)]);
+        start = end;
+    }
+    prints!("INFO: Report ({} bytes) written to the TPM NV index {:#x}\n", {report.len()}, nvindex);
+}
+
+fn tpm2_nvdefine_space(nvindex: u32, nvindex_attrs: u32, data_len: usize) -> TpmResponse {
+    let mut hdr: tpm_req_header = tpm_req_header::new(TPM2_ST_SESSIONS, 0, TPM2_CC_NV_DEFINESPACE);
+    let authblock: tpm2_authblock = tpm2_authblock::new(TPM2_RS_PW, 0, 0, 0);
+
+    let mut nvpublic: Vec<u8> = Vec::new();
+    nvpublic.extend_from_slice(&nvindex.to_be_bytes());
+    nvpublic.extend_from_slice(&TPM2_ALG_SHA256.to_be_bytes());
+    nvpublic.extend_from_slice(&nvindex_attrs.to_be_bytes());
+    nvpublic.extend_from_slice(&0_u16.to_be_bytes());
+    nvpublic.extend_from_slice(&(data_len as u16).to_be_bytes());
+
+    let mut nv_req: Vec<u8> = Vec::new();
+    nv_req.extend_from_slice(&hdr.as_slice());
+    nv_req.extend_from_slice(&TPM2_RH_PLATFORM.to_be_bytes());
+    nv_req.extend_from_slice(&tpm2_authblock::size().to_be_bytes());
+    nv_req.extend_from_slice(authblock.as_slice());
+    nv_req.extend_from_slice(&0_u16.to_be_bytes());
+    nv_req.extend_from_slice(&(nvpublic.len() as u16).to_be_bytes());
+    nv_req.extend_from_slice(nvpublic.as_slice());
+
+    let final_req_len = nv_req.len() as u32;
+    let (left_hdr, _) = nv_req.split_at_mut(core::mem::size_of::<tpm_req_header>());
+    hdr.set_size(final_req_len);
+    left_hdr.copy_from_slice(hdr.as_slice());
+    send_tpm_command(nv_req.as_mut_slice())
+}
+
+fn tpm2_nv_write(nvindex: u32, offset: u16, data: &[u8]) -> TpmResponse {
+    let mut hdr: tpm_req_header = tpm_req_header::new(TPM2_ST_SESSIONS, 0, TPM2_CC_NV_WRITE);
+    let authblock: tpm2_authblock = tpm2_authblock::new(TPM2_RS_PW, 0, 0, 0);
+
+    let mut nv_req: Vec<u8> = Vec::with_capacity(4096);
+    nv_req.extend_from_slice(&hdr.as_slice());
+    nv_req.extend_from_slice(&TPM2_RH_PLATFORM.to_be_bytes());
+    nv_req.extend_from_slice(&nvindex.to_be_bytes());
+    nv_req.extend_from_slice(&tpm2_authblock::size().to_be_bytes());
+    nv_req.extend_from_slice(authblock.as_slice());
+    nv_req.extend_from_slice(&(data.len() as u16).to_be_bytes());
+    nv_req.extend_from_slice(data);
+    nv_req.extend_from_slice(&offset.to_be_bytes());
+
+    let final_req_len = nv_req.len() as u32;
+    let (left_hdr, _) = nv_req.split_at_mut(core::mem::size_of::<tpm_req_header>());
+    hdr.set_size(final_req_len);
+    left_hdr.copy_from_slice(hdr.as_slice());
+    send_tpm_command(nv_req.as_mut_slice())
 }

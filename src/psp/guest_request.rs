@@ -7,6 +7,8 @@
  */
 
 use alloc::boxed::Box;
+use alloc::string::ToString;
+use core::fmt;
 use core::mem::MaybeUninit;
 use crate::{
     PAGE_SIZE,
@@ -42,6 +44,103 @@ use x86_64::{
     VirtAddr,
 };
 use x86_64::structures::paging::PhysFrame;
+
+// From Linux/include/uapi/linux/psp-sev.h
+#[repr(u32)]
+#[allow(non_camel_case_types, dead_code)]
+#[derive(Debug)]
+pub enum SevStatusCode {
+    SEV_RET_SUCCESS = 0,
+    SEV_RET_INVALID_PLATFORM_STATE,
+    SEV_RET_INVALID_GUEST_STATE,
+    SEV_RET_INAVLID_CONFIG,
+    SEV_RET_INVALID_LEN,
+    SEV_RET_ALREADY_OWNED,
+    SEV_RET_INVALID_CERTIFICATE,
+    SEV_RET_POLICY_FAILURE,
+    SEV_RET_INACTIVE,
+    SEV_RET_INVALID_ADDRESS,
+    SEV_RET_BAD_SIGNATURE,
+    SEV_RET_BAD_MEASUREMENT,
+    SEV_RET_ASID_OWNED,
+    SEV_RET_INVALID_ASID,
+    SEV_RET_WBINVD_REQUIRED,
+    SEV_RET_DFFLUSH_REQUIRED,
+    SEV_RET_INVALID_GUEST,
+    SEV_RET_INVALID_COMMAND,
+    SEV_RET_ACTIVE,
+    SEV_RET_HWSEV_RET_PLATFORM,
+    SEV_RET_HWSEV_RET_UNSAFE,
+    SEV_RET_UNSUPPORTED,
+    SEV_RET_INVALID_PARAM,
+    SEV_RET_RESOURCE_LIMIT,
+    SEV_RET_SECURE_DATA_INVALID,
+}
+
+impl SevStatusCode {
+    pub fn from_u32(value: u32) -> Option<SevStatusCode> {
+        match value {
+            0 => Some(SevStatusCode::SEV_RET_SUCCESS),
+            1 => Some(SevStatusCode::SEV_RET_INVALID_PLATFORM_STATE),
+            2 => Some(SevStatusCode::SEV_RET_INVALID_GUEST_STATE),
+            3 => Some(SevStatusCode::SEV_RET_INAVLID_CONFIG),
+            4 => Some(SevStatusCode::SEV_RET_INVALID_LEN),
+            5 => Some(SevStatusCode::SEV_RET_ALREADY_OWNED),
+            6 => Some(SevStatusCode::SEV_RET_INVALID_CERTIFICATE),
+            7 => Some(SevStatusCode::SEV_RET_POLICY_FAILURE),
+            8 => Some(SevStatusCode::SEV_RET_INACTIVE),
+            9 => Some(SevStatusCode::SEV_RET_INVALID_ADDRESS),
+            10 => Some(SevStatusCode::SEV_RET_BAD_SIGNATURE),
+            11 => Some(SevStatusCode::SEV_RET_BAD_MEASUREMENT),
+            12 => Some(SevStatusCode::SEV_RET_ASID_OWNED),
+            13 => Some(SevStatusCode::SEV_RET_INVALID_ASID),
+            14 => Some(SevStatusCode::SEV_RET_WBINVD_REQUIRED),
+            15 => Some(SevStatusCode::SEV_RET_DFFLUSH_REQUIRED),
+            16 => Some(SevStatusCode::SEV_RET_INVALID_GUEST),
+            17 => Some(SevStatusCode::SEV_RET_INVALID_COMMAND),
+            18 => Some(SevStatusCode::SEV_RET_ACTIVE),
+            19 => Some(SevStatusCode::SEV_RET_HWSEV_RET_PLATFORM),
+            20 => Some(SevStatusCode::SEV_RET_HWSEV_RET_UNSAFE),
+            21 => Some(SevStatusCode::SEV_RET_UNSUPPORTED),
+            22 => Some(SevStatusCode::SEV_RET_INVALID_PARAM),
+            23 => Some(SevStatusCode::SEV_RET_RESOURCE_LIMIT),
+            24 => Some(SevStatusCode::SEV_RET_SECURE_DATA_INVALID),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for SevStatusCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            SevStatusCode::SEV_RET_SUCCESS => f.write_str("SEV_RET_SUCCESS"),
+            SevStatusCode::SEV_RET_INVALID_PLATFORM_STATE => f.write_str("SEV_RET_INVALID_PLATFORM_STATE"),
+            SevStatusCode::SEV_RET_INVALID_GUEST_STATE => f.write_str("SEV_RET_INVALID_GUEST_STATE"),
+            SevStatusCode::SEV_RET_INAVLID_CONFIG => f.write_str("SEV_RET_INAVLID_CONFIG"),
+            SevStatusCode::SEV_RET_INVALID_LEN => f.write_str("SEV_RET_INVALID_LEN"),
+            SevStatusCode::SEV_RET_ALREADY_OWNED => f.write_str("SEV_RET_ALREADY_OWNED"),
+            SevStatusCode::SEV_RET_INVALID_CERTIFICATE => f.write_str("SEV_RET_INVALID_CERTIFICATE"),
+            SevStatusCode::SEV_RET_POLICY_FAILURE => f.write_str("SEV_RET_POLICY_FAILURE"),
+            SevStatusCode::SEV_RET_INACTIVE => f.write_str("SEV_RET_INACTIVE"),
+            SevStatusCode::SEV_RET_INVALID_ADDRESS => f.write_str("SEV_RET_INVALID_ADDRESS"),
+            SevStatusCode::SEV_RET_BAD_SIGNATURE => f.write_str("SEV_RET_BAD_SIGNATURE"),
+            SevStatusCode::SEV_RET_BAD_MEASUREMENT => f.write_str("SEV_RET_BAD_MEASUREMENT"),
+            SevStatusCode::SEV_RET_ASID_OWNED => f.write_str("SEV_RET_ASID_OWNED"),
+            SevStatusCode::SEV_RET_INVALID_ASID => f.write_str("SEV_RET_INVALID_ASID"),
+            SevStatusCode::SEV_RET_WBINVD_REQUIRED => f.write_str("SEV_RET_WBINVD_REQUIRED"),
+            SevStatusCode::SEV_RET_DFFLUSH_REQUIRED => f.write_str("SEV_RET_DFFLUSH_REQUIRED"),
+            SevStatusCode::SEV_RET_INVALID_GUEST => f.write_str("SEV_RET_INVALID_GUEST"),
+            SevStatusCode::SEV_RET_INVALID_COMMAND => f.write_str("SEV_RET_INVALID_COMMAND"),
+            SevStatusCode::SEV_RET_ACTIVE => f.write_str("SEV_RET_ACTIVE"),
+            SevStatusCode::SEV_RET_HWSEV_RET_PLATFORM => f.write_str("SEV_RET_HWSEV_RET_PLATFORM"),
+            SevStatusCode::SEV_RET_HWSEV_RET_UNSAFE => f.write_str("SEV_RET_HWSEV_RET_UNSAFE"),
+            SevStatusCode::SEV_RET_UNSUPPORTED => f.write_str("SEV_RET_UNSUPPORTED"),
+            SevStatusCode::SEV_RET_INVALID_PARAM => f.write_str("SEV_RET_INVALID_PARAM"),
+            SevStatusCode::SEV_RET_RESOURCE_LIMIT => f.write_str("SEV_RET_RESOURCE_LIMIT"),
+            SevStatusCode::SEV_RET_SECURE_DATA_INVALID => f.write_str("SEV_RET_SECURE_DATA_INVALID"),
+        }
+    }
+}
 
 // AEAD Algo
 #[allow(dead_code)]
@@ -231,6 +330,11 @@ impl SnpGuestRequest {
         //
         let rc = vc_snp_guest_request(pa1.start_address(), pa2.start_address());
         if rc != 0 {
+            let status = match SevStatusCode::from_u32(rc) {
+                Some(s) => s.to_string(),
+                None => "Unknown".to_string(),
+            };
+            prints!("ERROR: SNP_GUEST_REQUEST failed, status={} {}\n", rc, status);
             return None;
         }
         self.seq_num.add_two();

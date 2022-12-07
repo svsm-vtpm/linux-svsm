@@ -146,13 +146,7 @@ impl tpm2_evictcontrol_req {
     }
 }
 
-pub enum KeyType {
-    Ecc,
-    Rsa2048,
-    Rsa3072,
-}
-
-pub fn tpm2_create_ek(key_type: KeyType) {
+pub fn tpm2_create_ek_rsa2048() {
     let mut keyflags: u32 = 0;
     let symkeylen: u16 = 128;
     let authpolicy_len: u16 = 32;
@@ -241,100 +235,31 @@ fn tpm2_evictcontrol(curr_handle: u32, perm_handle: u32) {
     send_tpm_command(req.as_mut_slice());
 }
 
+/// Get the TPM EKpub in the TSS format (marshaled TPM2B_PUBLIC structure)
+/// TSS format e.g.: tpm2_createek -c 0x81000000 -G rsa -f tss -u /tmp/ekpub.tss
 pub fn tpm2_get_ek_pub() -> Vec<u8> {
+    // TPM2_CC_ReadPublic 0x00000173
     let mut cmd_req: &mut [u8] = &mut [
         0x80, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x01, 0x73, 0x81, 0x01, 0x00, 0x01,
     ];
+    // TPM command response buffer
+    let mut response_buf: TpmResponse = send_tpm_command(&mut cmd_req);
+    let mut response_size: i32 = response_buf.data.len() as i32;
 
-    let mut nvread_resp = send_tpm_command(&mut cmd_req);
+    // Output parameters
+    let out_parms: &[u8] = &response_buf.data[{tpm_req_header::size() as usize}..];
 
-    let mut size: i32 = nvread_resp.data.len() as i32;
+    const U16_SIZE: usize = core::mem::size_of::<u16>();
 
-    let (_, mut tpm2b_buffer) = nvread_resp
-        .data
-        .split_at_mut(tpm_req_header::size() as usize);
-
-    let mut public: TPM2B_PUBLIC = unsafe { MaybeUninit::uninit().assume_init() };
-
-    unsafe {
-        let rc = TPM2B_PUBLIC_Unmarshal(
-            &mut public,
-            &mut tpm2b_buffer.as_mut_ptr(),
-            &mut size,
-            false as i32,
-        );
-
-        println!("rc {} size {}", rc, size);
-        if rc == TPM_RC_SUCCESS {
-            if public.publicArea.type_ == TPM_ALG_RSA as u16 {
-                let ek_pub: Vec<u8> = convert_pubkey_rsa(&mut public.publicArea);
-                return ek_pub;
-            }
-        }
+    // TPM2B_PUBLIC.size field
+    let size: u16 = u16::from_be_bytes(out_parms[..U16_SIZE].try_into().unwrap());
+    if size as usize > core::mem::size_of::<TPMT_PUBLIC>() {
+        prints!("ERROR: TPM2B_PUBLIC.size={:#x} is too big\n", size);
+        return Vec::new();
     }
-    Vec::new()
-}
 
-fn convert_pubkey_rsa(public: &mut TPMT_PUBLIC) -> Vec<u8> {
-    unsafe {
-        let mut exponent: u64 = public.parameters.rsaDetail.exponent as u64;
-        if exponent == 0 {
-            exponent = 0x10001;
-        }
-
-        let bn_null: *mut WOLFSSL_BIGNUM = core::ptr::null_mut();
-
-        let n = wolfSSL_BN_bin2bn(
-            &mut public.unique.rsa.t.buffer as *mut _ as *mut u8,
-            public.unique.rsa.t.size as i32,
-            bn_null,
-        );
-
-        if n == bn_null {
-            println!("BN_bin2bn failed");
-        }
-
-        let e = wolfSSL_BN_new();
-
-        println!("{:#?}", e);
-        if e == bn_null {
-            panic!("BN_new failed");
-        }
-
-        let mut rc = wolfSSL_BN_set_word(e, exponent);
-
-        if rc == 0 {
-            println!("BN_set_word failed");
-        }
-
-        let rsa_null: *mut WOLFSSL_RSA = core::ptr::null_mut();
-
-        wc_LoggingInit();
-        wolfSSL_Debugging_ON();
-
-        let mut rsa_key: *mut WOLFSSL_RSA = wolfSSL_RSA_new();
-
-        if rsa_key == rsa_null {
-            println!("RSA_new failed");
-        }
-
-        rc = wolfSSL_RSA_set0_key(rsa_key, n, e, bn_null);
-
-        if rc == 0 {
-            println!("set_key failed");
-        }
-
-        let mut ekpub_der: *mut u8 = core::ptr::null_mut();
-        let mut ekpub_der_buf: *mut *mut u8 = &mut ekpub_der;
-        let mut ekpub_der_sz = 0;
-        ekpub_der_sz = wolfSSL_i2d_RSAPublicKey(rsa_key, ekpub_der_buf);
-
-        let ekpub_buf = ekpub_der as *const cty::c_void as *const u8 as u64;
-        println!("Retrieved ek.pub {:#x?} size {}", ekpub_buf, ekpub_der_sz);
-        Vec::from_raw_parts(
-            ekpub_der as *mut u8,
-            ekpub_der_sz as usize,
-            ekpub_der_sz as usize,
-        )
-    }
+    // TPM2B_PUBLIC structure
+    let out_public: &[u8] = &out_parms[..{size as usize + U16_SIZE}];
+    //prints!("out_public {:x} {:02x?}\n", {out_public.len()}, out_public);
+    out_public.to_vec()
 }

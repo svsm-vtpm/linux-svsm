@@ -6,6 +6,7 @@
  *
  */
 
+use crate::bindings::WC_SHA512_DIGEST_SIZE;
 use crate::println;
 use crate::util::locking::SpinLock;
 use crate::*;
@@ -15,6 +16,10 @@ use cty::c_void;
 use core::slice;
 use lazy_static::lazy_static;
 use x86_64::PhysAddr;
+use super::manufacture::{
+    tpm2_create_ek_rsa2048,
+    tpm2_get_ek_pub,
+};
 
 use tock_registers::{
     interfaces::{ReadWriteable, Readable, Writeable},
@@ -273,9 +278,29 @@ pub fn vtpm_init() {
     ];
     send_tpm_command(&mut cmd1);
     send_tpm_command(&mut cmd2);
-    let keytype: KeyType = KeyType::Rsa2048;
-    manufacture::tpm2_create_ek(keytype);
-    manufacture::tpm2_get_ek_pub();
+    //
+    // Create EK pub in the TPM. The attestation report we save in the TPM has a hash of the EK
+    // pub.
+    //
+    tpm2_create_ek_rsa2048();
+    let ek_pub: Vec<u8> = tpm2_get_ek_pub();
+    if ek_pub.is_empty() {
+        prints!("ERROR: Failed to read the EK pub from the TPM\n");
+        return;
+    }
+    let mut ek_pub_digest: [u8; WC_SHA512_DIGEST_SIZE as usize] =
+        [0; WC_SHA512_DIGEST_SIZE as usize];
+    unsafe {
+        let ret: i32 = wc_Sha512Hash(
+            ek_pub.as_ptr(),
+            ek_pub.len().try_into().unwrap(),
+            ek_pub_digest.as_mut_ptr(),
+        );
+        if ret != 0 {
+            prints!("wc_Sha512_Hash failed, ret={}", ret);
+            return;
+        }
+    }
 }
 
 pub fn handle_tpm2_crb_request(addr: u32, val: u64) {

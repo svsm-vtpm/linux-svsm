@@ -6,6 +6,7 @@
 #include "ExecCommand_fp.h"
 #include "wolfssl/openssl/bn.h"
 #include "wolfssl/openssl/ssl.h"
+#include "wolfssl/wolfcrypt/sha512.h"
 
 #define TPM_ALG_RSA                     (ALG_RSA_VALUE)
 #define TPM_RC_SUCCESS                  (0x000)

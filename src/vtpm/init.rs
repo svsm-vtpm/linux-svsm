@@ -228,7 +228,7 @@ pub fn send_tpm_command(request: &mut [u8]) -> TpmResponse {
     let mut _resp_vec: *mut u8 = __resp_vec.as_mut_ptr();
     unsafe {
         let resp_vec: *mut *mut u8 = &mut _resp_vec as *mut *mut u8;
-
+//        prints!("TPM Request: len={:#x} {:02x?}\n", {request.len()}, request);
         ExecuteCommand(
             request.len() as u32,
             request.as_mut_ptr(),
@@ -237,6 +237,7 @@ pub fn send_tpm_command(request: &mut [u8]) -> TpmResponse {
         );
         __resp_vec.set_len(__resp_sz as usize);
     }
+//    prints!("TPM Response: len={:#x} {:02x?}\n", __resp_sz, {&__resp_vec});
     let tpm_resp: TpmResponse = TpmResponse {
         data: __resp_vec,
     };

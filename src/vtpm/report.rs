@@ -7,6 +7,7 @@
  */
 
 use core::slice;
+use crate::manufacture::tpm2_write_report_nvram;
 use crate::prints;
 use crate::psp::guest_request::{
     send_guest_request,

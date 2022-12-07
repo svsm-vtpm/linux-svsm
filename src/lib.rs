@@ -28,6 +28,8 @@ pub mod cpu;
 pub mod globals;
 /// Prepare page table, handle memory (de)allocations
 pub mod mem;
+/// PSP firmware messages
+pub mod psp;
 /// Handle requests from the SVSM guest
 pub mod svsm_request;
 /// Auxiliary functions and macros

@@ -115,6 +115,8 @@ const GHCB_NAE_CPUID: u64 = 0x72;
 const GHCB_NAE_IOIO: u64 = 0x7b;
 /// 0x80000010
 const GHCB_NAE_PSC: u64 = 0x80000010;
+/// 0x80000011
+const GHCB_NAE_SNP_GUEST_REQUEST: u64 = 0x80000011;
 /// 0x80000013
 const GHCB_NAE_SNP_AP_CREATION: u64 = 0x80000013;
 /// 1
@@ -375,6 +377,34 @@ pub fn vc_ap_create(vmsa_va: VirtAddr, apic_id: u32) {
 
         (*ghcb).clear();
     }
+}
+
+pub fn vc_snp_guest_request(req_page: PhysAddr, resp_page: PhysAddr) -> u32 {
+
+    let ghcb: *mut Ghcb = vc_get_ghcb();
+
+//    if (exit_code == SVM_VMGEXIT_EXT_GUEST_REQUEST) {
+//        ghcb_set_rax(ghcb, input.data_gpa);
+//        ghcb_set_rbx(ghcb, input.data_npages);
+//    }
+
+    unsafe {
+        vc_perform_vmgexit(
+            ghcb,
+            GHCB_NAE_SNP_GUEST_REQUEST,
+            req_page.as_u64(),
+            resp_page.as_u64()
+        );
+        if !(*ghcb).is_sw_exit_info_2_valid() {
+            vc_terminate_svsm_resp_invalid();
+        }
+        let rc = LOWER_32BITS!((*ghcb).sw_exit_info_2()) as u32;
+        (*ghcb).clear();
+        if rc != 0 {
+            return rc;
+        }
+    }
+    return 0;
 }
 
 pub fn vc_get_apic_ids(bsp_apic_id: u32) -> Vec<u32> {

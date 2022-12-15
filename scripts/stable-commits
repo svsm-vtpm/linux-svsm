@@ -7,12 +7,12 @@
 if [ "$VTPM" == "1" ]; then
 	echo "VTPM profile selected"
 	# Hypervisor commit
-	KERNEL_GIT_URL="git@github.com:svsm-vtpm/linux.git"
+	KERNEL_GIT_URL="https://github.com/svsm-vtpm/linux.git"
 	KERNEL_HOST_BRANCH="svsm-preview-hv"
 	KERNEL_GUEST_BRANCH="svsm-vtpm-preview-guest"
 
 	# qemu commit
-	QEMU_GIT_URL="git@github.com:svsm-vtpm/qemu.git"
+	QEMU_GIT_URL="https://github.com/svsm-vtpm/qemu.git"
 	QEMU_BRANCH="svsm-vtpm-preview"
 else
 	# Hypervisor commit

@@ -11,6 +11,21 @@ run_cmd()
 	}
 }
 
+fetch_from_git_remote()
+{
+	local git_url="$1"
+	local git_branch="$2"
+
+	if git config remote.current.url > /dev/null; then
+		run_cmd git remote set-url current ${git_url}
+	else
+		run_cmd git remote add current ${git_url}
+	fi
+	run_cmd git fetch current ${git_branch}
+	run_cmd git checkout current/${git_branch}
+	run_cmd git submodule update --init --recursive
+}
+
 build_kernel()
 {
 	KERNEL_TYPE=$1
@@ -19,9 +34,6 @@ build_kernel()
 	pushd linux >/dev/null
 		if [ ! -d guest ]; then
 			run_cmd git clone ${KERNEL_GIT_URL} guest
-			pushd guest >/dev/null
-				run_cmd git remote add current ${KERNEL_GIT_URL}
-			popd >/dev/null
 		fi
 
 		if [ ! -d host ]; then
@@ -54,11 +66,7 @@ build_kernel()
 			run_cmd $MAKE distclean
 
 			pushd ${V} >/dev/null
-				# If ${KERNEL_GIT_URL} is ever changed, 'current' remote will be out
-				# of date, so always update the remote URL first
-				run_cmd git remote set-url current ${KERNEL_GIT_URL}
-				run_cmd git fetch current
-				run_cmd git checkout current/${BRANCH}
+				fetch_from_git_remote ${KERNEL_GIT_URL} ${KERNEL_BRANCH}
 				COMMIT=$(git log --format="%h" -1 HEAD)
 
 				run_cmd "cp /boot/config-$(uname -r) .config"
@@ -113,15 +121,13 @@ build_install_ovmf()
 	# captures all the OVMF debug messages on qemu serial log. remove -DDEBUG_ON_SERIAL_PORT to disable it.
 	BUILD_CMD="nice build -q --cmd-len=64436 -DDEBUG_ON_SERIAL_PORT -n $(getconf _NPROCESSORS_ONLN) ${GCCVERS:+-t $GCCVERS} -a X64 -p OvmfPkg/OvmfPkgX64.dsc"
 
-	[ -d ovmf ] || {
+	if [ ! -d ovmf ]; then
 		run_cmd git clone --single-branch -b ${OVMF_BRANCH} ${OVMF_GIT_URL} ovmf
-
-		pushd ovmf >/dev/null
-			run_cmd git submodule update --init --recursive
-		popd >/dev/null
-	}
+	fi
 
 	pushd ovmf >/dev/null
+		fetch_from_git_remote ${OVMF_GIT_URL} ${OVMF_BRANCH}
+
 		run_cmd make -C BaseTools
 		. ./edksetup.sh --reconfig
 		run_cmd $BUILD_CMD
@@ -138,17 +144,12 @@ build_install_qemu()
 
 	if [ ! -d qemu ]; then
 		run_cmd git clone --single-branch -b ${QEMU_BRANCH} ${QEMU_GIT_URL} qemu
-		pushd qemu > /dev/null
-			run_cmd git remote add current ${QEMU_GIT_URL}
-		popd > /dev/null
 	fi
 
 	MAKE="make -j $(getconf _NPROCESSORS_ONLN) LOCALVERSION="
 
 	pushd qemu >/dev/null
-		run_cmd git remote set-url current ${QEMU_GIT_URL}
-		run_cmd git fetch current
-		run_cmd git checkout current/${QEMU_BRANCH}
+		fetch_from_git_remote ${QEMU_GIT_URL} ${QEMU_BRANCH}
 		run_cmd ./configure --target-list=x86_64-softmmu --prefix=$DEST --disable-werror
 		run_cmd $MAKE
 		run_cmd $MAKE install

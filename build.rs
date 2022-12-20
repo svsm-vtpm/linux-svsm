@@ -91,7 +91,7 @@ fn main() {
     ];
 
     let wolfssl_cflags = format!(
-        "-fno-stack-protector -nostdinc -Wno-error=float-equal -I{} -I{} -I{}",
+        "-fno-stack-protector -fPIE -nostdinc -Wno-error=float-equal -I{} -I{} -I{}",
         Path::new(&wolfssl_src).join("amd-svsm").to_str().unwrap(),
         Path::new(&libcrt_src).join("include").to_str().unwrap(),
         Path::new(&libm_src).join("include").to_str().unwrap()

@@ -1,0 +1,3 @@
+create_certs_tool= /usr/share/swtpm/swtpm-localca
+create_certs_tool_config = %%etcdir%%/swtpm-localca.conf
+create_certs_tool_options = %%etcdir%%/swtpm-localca.options

@@ -40,19 +40,19 @@ Setup #2: same VM guest running with swtpm vTPM over socket.
 ===> TPM manufacturer: "IBM"
 ===> pcrread test 
      repeats:               3000
-     test duration:         25 s
-     pcrread latency:       8613 usecs
+     test duration:         54 s
+     pcrread latency:       18254 usecs
 ===> pcrextend test 
      repeats:               3000
      test duration:         14 s
-     pcrextend latency:     4813 usecs
+     pcrextend latency:     4845 usecs
 ===> tpm2_quote test 
      repeats:               1000
      Prep exit code:        0
-     test duration:         57 s
-     tpm2_quote latency:    57614 usecs
+     test duration:         56 s
+     tpm2_quote latency:    56783 usecs
 ===> createprimary (ECC) test
      repeats:               100
      test duration:         3 s
-     createprimary latency: 35384 usecs
+     createprimary latency: 34438 usecs
 ```

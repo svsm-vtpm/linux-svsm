@@ -3,7 +3,7 @@ extern crate bindgen;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, ExitStatus};
 
 const LIBCRT_SRC: &str = "external/libcrt";
 const LIBM_SRC: &str = "external/libm";
@@ -13,6 +13,13 @@ const BUILD_DIR: &str = "external/build";
 
 struct CommandWithArgs<'a>(String, Vec<&'a str>);
 
+pub fn is_ok(status: &ExitStatus) -> Result<(), ()> {
+    match status.success() {
+        true => Ok(()),
+        false => Err(()),
+    }
+}
+
 fn build_library(src_dir: &str, commands: &Vec<CommandWithArgs>) {
     let pwd = env::current_dir().unwrap();
 
@@ -21,12 +28,13 @@ fn build_library(src_dir: &str, commands: &Vec<CommandWithArgs>) {
     for cmd in commands {
         println!("=== Cwd    : {} ", src_dir);
         println!("=== Running: {} {}", cmd.0, cmd.1.join(" "));
-        Command::new(&cmd.0)
+        is_ok(&Command::new(&cmd.0)
             .args(&cmd.1)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .status()
-            .unwrap();
+            .expect("command failed to launch")
+        ).expect("command returned non-zero code");
     }
 
     env::set_current_dir(pwd).expect("failed to cd to build directory");

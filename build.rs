@@ -251,6 +251,9 @@ fn main() {
                 .to_str()
                 .unwrap()
         ))
+        .clang_arg(
+            "-I/usr/include/x86_64-linux-gnu/"
+        )
         .header("libtpm.h")
         .generate()
         .expect("Unable to generate bindings");

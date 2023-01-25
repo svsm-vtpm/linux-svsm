@@ -19,6 +19,8 @@ fn build_library(src_dir: &str, commands: &Vec<CommandWithArgs>) {
     env::set_current_dir(src_dir).expect("failed to cd to build directory");
 
     for cmd in commands {
+        println!("=== Cwd    : {} ", src_dir);
+        println!("=== Running: {} {}", cmd.0, cmd.1.join(" "));
         Command::new(&cmd.0)
             .args(&cmd.1)
             .stdout(Stdio::inherit())

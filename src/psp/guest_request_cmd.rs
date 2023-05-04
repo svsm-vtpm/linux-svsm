@@ -5,7 +5,12 @@
  * Authors: Claudio Carvalho <cclaudio@linux.ibm.com>
  */
 
-use crate::BIT;
+use crate::mem::{
+    mem_allocate, mem_allocate_frame, pgtable_make_pages_shared, pgtable_pa_to_va,
+};
+use crate::{
+    prints, ALIGN, ALIGNED, BIT, PAGE_COUNT, PAGE_SHIFT, PAGE_SIZE,
+};
 
 use x86_64::addr::VirtAddr;
 
@@ -44,6 +49,9 @@ const AUTHTAG_SIZE: u16 = 16;
 /// 12
 const IV_SIZE: usize = 12;
 
+/// 0x4000
+pub const SNP_GUEST_REQ_MAX_DATA_SIZE: usize = 0x4000;
+
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 struct SnpGuestRequestMsgHdr {
@@ -66,6 +74,17 @@ struct SnpGuestRequestMsgHdr {
 struct SnpGuestRequestMsg {
     hdr: SnpGuestRequestMsgHdr,
     payload: [u8; 4000usize],
+}
+
+impl SnpGuestRequestMsg {
+    fn alloc() -> Result<VirtAddr, ()> {
+        if let Some(pf) = mem_allocate_frame() {
+            let va: VirtAddr = pgtable_pa_to_va(pf.start_address());
+            return Ok(va);
+        }
+        prints!("ERR: Failed to allocate a guest request message\n");
+        Err(())
+    }
 }
 
 pub struct SnpGuestRequestCmd {
@@ -109,5 +128,43 @@ impl SnpGuestRequestCmd {
 
     pub fn set_data_npages(&mut self, npages: &usize) {
         self.data_npages = *npages;
+    }
+
+    pub const fn new() -> Self {
+        SnpGuestRequestCmd {
+            req_shared_page: VirtAddr::zero(),
+            resp_shared_page: VirtAddr::zero(),
+
+            data_gva: VirtAddr::zero(),
+            data_npages: 0,
+
+            staging_priv_page: VirtAddr::zero(),
+            ossl_ctx: VirtAddr::zero(),
+
+            initialized: false,
+        }
+    }
+
+    pub fn init(&mut self) -> Result<(), ()> {
+        if !initialized {
+            self.req_shared_page = SnpGuestRequestMsg::alloc()?;
+            self.resp_shared_page = SnpGuestRequestMsg::alloc()?;
+            self.staging_priv_page = SnpGuestRequestMsg::alloc()?;
+
+            self.data_gva = mem_allocate(SNP_GUEST_REQ_MAX_DATA_SIZE)?;
+            if !ALIGNED!(self.data_gva.as_u64(), PAGE_SIZE) {
+                prints!("ERR: data_gva is not page aligned\n");
+                return Err(());
+            }
+            self.data_npages = PAGE_COUNT!(SNP_GUEST_REQ_MAX_DATA_SIZE as u64) as usize;
+
+            // The SNP ABI spec says the request, response and data pages have
+            // to be shared with the hypervisor
+            pgtable_make_pages_shared(self.req_shared_page, PAGE_SIZE);
+            pgtable_make_pages_shared(self.resp_shared_page, PAGE_SIZE);
+            pgtable_make_pages_shared(self.data_gva, SNP_GUEST_REQ_MAX_DATA_SIZE as u64);
+        }
+
+        Ok(())
     }
 }

@@ -46,6 +46,7 @@ use crate::cpu::rmpadjust;
 use crate::cpu::*;
 use crate::globals::*;
 use crate::mem::*;
+use crate::psp::request::snp_guest_request_init;
 use crate::svsm_request::svsm_request_loop;
 use crate::util::*;
 use crate::vmsa::*;
@@ -151,6 +152,9 @@ pub extern "C" fn svsm_main() -> ! {
 
     // Load BIOS
     start_bios();
+
+    // Initialize resources for SNP_GUEST_REQUEST messages
+    snp_guest_request_init();
 
     // Start taking requests from guest in this vCPU
     svsm_request_loop();

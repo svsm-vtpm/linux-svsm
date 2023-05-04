@@ -90,4 +90,24 @@ pub struct SnpGuestRequestCmd {
     initialized: bool,
 }
 
+impl SnpGuestRequestCmd {
+    pub fn get_req_shared_page(&self) -> VirtAddr {
+        self.req_shared_page
+    }
+
+    pub fn get_resp_shared_page(&self) -> VirtAddr {
+        self.resp_shared_page
+    }
+
+    pub fn get_data_gva(&self) -> VirtAddr {
+        self.data_gva
+    }
+
+    pub fn get_data_npages(&self) -> usize {
+        self.data_npages
+    }
+
+    pub fn set_data_npages(&mut self, npages: &usize) {
+        self.data_npages = *npages;
+    }
 }

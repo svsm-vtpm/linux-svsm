@@ -6,6 +6,8 @@
  *          Tom Lendacky <thomas.lendacky@amd.com>
  */
 
+/// Cryptographic hash functions implementations
+pub mod hash;
 /// Lock implementation for mutual exclusion
 pub mod locking;
 /// Serial output support

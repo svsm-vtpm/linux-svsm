@@ -44,6 +44,8 @@ pub mod wrapper;
 
 extern crate alloc;
 
+use psp::request::CertsBuf;
+
 use crate::bios::start_bios;
 use crate::cpu::rmpadjust;
 use crate::cpu::*;
@@ -155,6 +157,60 @@ pub extern "C" fn svsm_main() -> ! {
 
     // Initialize resources for SNP_GUEST_REQUEST messages
     snp_guest_request_init();
+
+    let buf: x86_64::addr::VirtAddr = mem::mem_allocate(0x4000).unwrap();
+    let mut certs: CertsBuf = CertsBuf::new(buf, 0x4000usize);
+    let mut psp_rc: u64 = 0;
+    let mut data: [u8; 64] = [0u8; 64];
+    data[0] = 0x31;
+    data[1] = 0x32;
+    data[2] = 0x33;
+    data[4] = 0x34;
+
+    // Test extended attestation report request
+    let result: Result<psp::msg_report::SnpReportResponse, u64> =
+        psp::request::get_report(&data, &mut psp_rc, Some(&mut certs));
+
+    if let Ok(resp) = result {
+        prints!(
+            "INFO: Report, {} bytes, vmpl {}\n",
+            { resp.report_size() },
+            { resp.report().vmpl() }
+        );
+        prints!("INFO:     report_id: {:x?}\n", {
+            resp.report().report_id()
+        });
+        prints!("INFO:     report_data: {:x?}\n", {
+            resp.report().report_data()
+        });
+
+        let sample: *const [u8; 500] = buf.as_ptr() as *const [u8; 500];
+        prints!("INFO: certs sample {:x?}\n", { unsafe { *sample } });
+    }
+
+    data[0] = 0x35;
+    data[1] = 0x36;
+    data[2] = 0x37;
+    data[4] = 0x38;
+    psp_rc = 0;
+
+    // Test attestation report request
+    let result: Result<psp::msg_report::SnpReportResponse, u64> =
+        psp::request::get_report(&data, &mut psp_rc, None);
+
+    if let Ok(resp) = result {
+        prints!(
+            "INFO: Report, {} bytes, vmpl {}\n",
+            { resp.report_size() },
+            { resp.report().vmpl() }
+        );
+        prints!("INFO:     report_id: {:x?}\n", {
+            resp.report().report_id()
+        });
+        prints!("INFO:     report_data: {:x?}\n", {
+            resp.report().report_data()
+        });
+    }
 
     // Load BIOS
     start_bios();

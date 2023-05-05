@@ -133,3 +133,9 @@ pub struct AttestationReport {
     reserved2: [u8; 192usize],
     signature: Signature,
 }
+
+impl AttestationReport {
+    getter_func!(vmpl, u32);
+    getter_func!(report_data, [u8; USER_DATA_SIZE]);
+    getter_func!(report_id, [u8; 32]);
+}

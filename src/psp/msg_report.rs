@@ -47,10 +47,10 @@ impl SnpReportRequest {
 #[repr(align(2048))]
 #[derive(Debug, Copy, Clone)]
 pub struct SnpReportResponse {
-    status: u32,
-    report_size: u32,
-    reserved: [u8; 24usize],
-    report: AttestationReport,
+    pub status: u32,
+    pub report_size: u32,
+    _reserved: [u8; 24],
+    pub report: AttestationReport,
 }
 
 impl SnpReportResponse {

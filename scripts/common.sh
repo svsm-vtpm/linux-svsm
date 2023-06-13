@@ -50,9 +50,9 @@ build_kernel()
 			fi
 
 			if [ "${V}" = "guest" ]; then
-				BRANCH="${KERNEL_GUEST_BRANCH}"
+				KERNEL_BRANCH="${KERNEL_GUEST_BRANCH}"
 			else
-				BRANCH="${KERNEL_HOST_BRANCH}"
+				KERNEL_BRANCH="${KERNEL_HOST_BRANCH}"
 			fi
 
 			# Nuke any previously built packages so they don't end up in new tarballs

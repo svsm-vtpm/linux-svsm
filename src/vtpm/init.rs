@@ -350,7 +350,7 @@ pub fn handle_tpm2_crb_request(addr: u32, val: u64) {
                 crb_regs.loc_state.modify(LocState::LocAssigned.val(1));
                 let sts = (TPM_CRB_BASE + 0xc) as *const u64;
                 let loc_sts = crb_regs.loc_sts.get();
-                let sts_val = unsafe { *sts };
+                let sts_val = unsafe { core::ptr::read_unaligned(sts) };
                 println!("sts {} read_back val {}", sts_val, loc_sts);
             }
         }

@@ -183,7 +183,7 @@ fn find_bios_guid_entry(bios_info: &mut BiosInfo, guid: &str) -> Option<u64> {
 }
 
 unsafe fn __find_snp_section(bios_info: &mut BiosInfo, stype: u32, p: u64) -> Option<SnpSection> {
-    let offset: u64 = *(p as *const u32) as u64;
+    let offset: u64 = core::ptr::read_unaligned(p as *const u32) as u64;
     if offset > bios_info.size {
         return None;
     }

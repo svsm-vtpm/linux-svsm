@@ -274,7 +274,7 @@ impl SnpGuestRequest {
         //
         // Request message header
         //
-        let mut req_hdr = unsafe { &mut (*req_msg).hdr };
+        let req_hdr = unsafe { &mut (*req_msg).hdr };
         req_hdr.msg_seqno = seq_num;
         req_hdr.algo = SNP_AEAD_AES_256_GCM;
         req_hdr.hdr_version = HDR_VERSION;

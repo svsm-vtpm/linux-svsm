@@ -67,7 +67,7 @@ svsm.bin.elf: $(EXT_LIBS) $(OBJS) src/start/svsm.lds
 %.lds: %.lds.S src/start/svsm.h
 	$(GCC) $(A_FLAGS) $(LDS_FLAGS) -E -P -o $@ $<
 
-test:
+test: libcrypto
 	cargo test --features $(FEATURES) --target=x86_64-unknown-linux-gnu -Z build-std
 
 prereq: .prereq

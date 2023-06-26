@@ -40,4 +40,6 @@ fn main() {
     bindings
         .write_to_file(PathBuf::from(out_dir).join("bindings.rs"))
         .expect("ERR: Couldn't write bindings!");
+
+    println!("cargo:rustc-link-lib=crypto");
 }

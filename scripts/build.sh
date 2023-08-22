@@ -22,6 +22,7 @@ function usage()
 }
 
 INSTALL_DIR="`pwd`/usr/local"
+SOURCE_DIR="${SCRIPT_DIR}/../../"
 
 while [ -n "$1" ]; do
 	case "$1" in
@@ -56,20 +57,22 @@ INSTALL_DIR=$(readlink -e $INSTALL_DIR)
 }
 
 if [ -z "$1" ]; then
-	build_install_qemu "$INSTALL_DIR"
-	build_install_ovmf "$INSTALL_DIR/share/qemu"
-	build_kernel
+	build_install_qemu "$INSTALL_DIR" "$SOURCE_DIR"
+	build_install_ovmf "$INSTALL_DIR/share/qemu" "$SOURCE_DIR"
+	build_kernel "$SOURCE_DIR"
+
 else
 	case "$1" in
 	qemu)
-		build_install_qemu "$INSTALL_DIR"
+		build_install_qemu "$INSTALL_DIR" "$SOURCE_DIR"
+
 		;;
 	ovmf)
-		build_install_ovmf "$INSTALL_DIR/share/qemu"
+		build_install_ovmf "$INSTALL_DIR/share/qemu" "$SOURCE_DIR"
 		;;
 	kernel)
 		# additional argument of "host" or "guest" can be added to limit build to that type
-		build_kernel $2
+		build_kernel "$SOURCE_DIR" $2
 		;;
 	esac
 fi

@@ -23,13 +23,17 @@ fetch_from_git_remote()
 	fi
 	run_cmd git fetch current ${git_branch}
 	run_cmd git checkout current/${git_branch}
-	run_cmd git submodule update --init --recursive
+	if [ $(echo "$git_url" | awk -F'/' '{print $NF}') != "linux.git" ]; then
+		run_cmd git submodule update --init --recursive
+	fi
 }
 
 build_kernel()
 {
-	KERNEL_TYPE=$1
+	BASE_DIR=$1
+	KERNEL_TYPE=$2
 
+	pushd ${BASE_DIR} > /dev/null
 	mkdir -p linux
 	pushd linux >/dev/null
 		if [ ! -d guest ]; then
@@ -103,11 +107,15 @@ build_kernel()
 			fi
 		done
 	popd >/dev/null
+	popd >/dev/null
 }
 
 build_install_ovmf()
 {
 	DEST="$1"
+	BASE_DIR="$2"
+
+	pushd ${BASE_DIR} > /dev/null
 
 	GCC_VERSION=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
 	GCC_MAJOR=$(echo $GCC_VERSION | awk -F . '{print $1}')
@@ -136,12 +144,15 @@ build_install_ovmf()
 		run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_CODE.fd $DEST
 		run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_VARS.fd $DEST
 	popd >/dev/null
+	popd >/dev/null
 }
 
 build_install_qemu()
 {
 	DEST="$1"
+	BASE_DIR="$2"
 
+	pushd ${BASE_DIR} > /dev/null
 	if [ ! -d qemu ]; then
 		run_cmd git clone --single-branch -b ${QEMU_BRANCH} ${QEMU_GIT_URL} qemu
 	fi
@@ -153,5 +164,6 @@ build_install_qemu()
 		run_cmd ./configure --target-list=x86_64-softmmu --prefix=$DEST --disable-werror
 		run_cmd $MAKE
 		run_cmd $MAKE install
+	popd >/dev/null
 	popd >/dev/null
 }

@@ -65,7 +65,7 @@ svsm.bin.elf: $(OBJS) src/start/svsm.lds
 prereq: .prereq
 
 .prereq:
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 	source $(HOME)/.cargo/env
 	echo "source $(HOME)/.cargo/env" >> ~/.bashrc
 	rustup +nightly target add x86_64-unknown-none

@@ -161,7 +161,7 @@ build_install_qemu()
 
 	pushd qemu >/dev/null
 		fetch_from_git_remote ${QEMU_GIT_URL} ${QEMU_BRANCH}
-		run_cmd ./configure --target-list=x86_64-softmmu --prefix=$DEST --disable-werror
+		run_cmd ./configure --target-list=x86_64-softmmu --prefix=$DEST --disable-werror --enable-virtfs
 		run_cmd $MAKE
 		run_cmd $MAKE install
 	popd >/dev/null

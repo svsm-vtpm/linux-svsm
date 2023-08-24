@@ -455,6 +455,7 @@ else
 	fi
 fi
 
+add_opts "-virtfs local,path=$(pwd)/../../linux,mount_tag=host0,security_model=passthrough,id=host0"
 start_tpm
 
 # log the console  output in stdout.log

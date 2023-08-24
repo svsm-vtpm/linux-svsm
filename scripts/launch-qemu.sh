@@ -113,6 +113,29 @@ setup_bridge_network() {
 	fi
 }
 
+
+start_tpm() {
+	if [ -n "$TPM" ]; then
+		TPM_DIR="/tmp/qemu-vtpm-${SUDO_USER}"
+		TPMSTATE=${TPM_DIR}/tpmstate
+
+		# Create TPM working directory
+		[ -e $TPM_DIR ] || mkdir $TPM_DIR
+
+		pushd ./benchmarks/swtpm_scripts/
+			./run_swtpm_socket.sh
+		popd
+
+		# Start swtpm
+		echo "swtpm socket ${TPM2:+--tpm2} --tpmstate dir=$TPM_DIR/ --ctrl type=unixio,path=$TPM_DIR/swtpm-sock --log level=20"
+		swtpm socket -d ${TPM2:+--tpm2} --tpmstate dir=$TPM_DIR/,mode=0600 --ctrl type=unixio,path=$TPM_DIR/swtpm-sock --pid file=${TPMSTATE}/swtpm-pid --log level=20,file=${TPMSTATE}/swtpm.log &
+
+		add_opts "-chardev socket,id=chrtpm,path=$TPM_DIR/swtpm-sock"
+		add_opts "-tpmdev emulator,id=tpm0,chardev=chrtpm"
+		add_opts "-device tpm-crb,tpmdev=tpm0"
+	fi
+}
+
 get_cbitpos() {
 	#
 	# Get C-bit position directly from the hardware
@@ -239,6 +262,12 @@ while [ -n "$1" ]; do
 				;;
 		-svsmcrb)       SVSM_CRB="1"
 			        ;;
+		-tpm)			TPM="1"
+			;;
+		-tpm2)		TPM="1"
+				TPM2="1"
+        UEFI_BIOS_CODE="/usr/share/OVMF/OVMF_CODE_4M.fd"
+			;;
 		-ssh-forward)   SSH_FORWARD="1"
 			        ;;
 		*) 		usage;;
@@ -425,6 +454,8 @@ else
 		add_opts "-netdev user,id=vmnic -device e1000,netdev=vmnic,romfile="
 	fi
 fi
+
+start_tpm
 
 # log the console  output in stdout.log
 QEMU_CONSOLE_LOG=`pwd`/stdout.log

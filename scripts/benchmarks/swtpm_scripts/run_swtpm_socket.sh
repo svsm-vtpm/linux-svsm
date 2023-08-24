@@ -2,7 +2,11 @@
 
 # configuration: temporary directory this process is running in
 
-export TMPDIR=${TPMDIR:-/tmp/cortex-${USER}}
+export TMPDIR=${TPMDIR:-/tmp/qemu-vtpm-${USER}}
+
+
+# Create keys
+openssl req -x509 -newkey rsa:4096 -keyout ./swtpm/signkey.pem -out ./swtpm/issuercert.pem -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
 
 # ##########################################
 # provision and start swtpm
@@ -51,6 +55,7 @@ fi
 # run swtpm
 # ##########################################
 
+run_swtpm() {
 echo "==> run_swtpm: starting"
 swtpm socket \
       -d \
@@ -59,6 +64,7 @@ swtpm socket \
       --ctrl type=unixio,path=${TPMSTATE}/swtpm-sock \
       --pid file=${TPMSTATE}/swtpm-pid \
       --log level=20,file=${TPMSTATE}/swtpm.log
+}
 
 # ##########################################
 # 

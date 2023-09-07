@@ -2,7 +2,7 @@
 
 # configuration: temporary directory this process is running in
 
-export TMPDIR=${TPMDIR:-/tmp/qemu-vtpm-${USER}}
+export TMPDIR=${TPMDIR:-/tmp/qemu-vtpm-${SUDO_USER}}
 
 
 # Create keys
